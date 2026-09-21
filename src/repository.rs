@@ -1,0 +1,83 @@
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+
+use crate::model::Checkpoint;
+use crate::util::{io_error, json_field};
+
+pub(crate) fn root() -> Result<PathBuf, String> {
+    let mut directory = env::current_dir().map_err(io_error)?;
+    loop {
+        let candidate = directory.join(".crane");
+        if candidate.is_dir() {
+            return Ok(candidate);
+        }
+        if !directory.pop() {
+            break;
+        }
+    }
+    Err("could not find .crane; run 'crane init'".into())
+}
+
+pub(crate) fn root_allow_missing() -> Result<PathBuf, String> {
+    let mut directory = env::current_dir().map_err(io_error)?;
+    let original = directory.clone();
+    loop {
+        let candidate = directory.join(".crane");
+        if candidate.is_dir() {
+            return Ok(candidate);
+        }
+        if directory.join(".git").exists() {
+            return Ok(original.join(".crane"));
+        }
+        if !directory.pop() {
+            break;
+        }
+    }
+    Err("not inside a Git repository".into())
+}
+
+pub(crate) fn ensure_initialized() -> Result<(), String> {
+    let _ = root()?;
+    ensure_repo()
+}
+
+pub(crate) fn ensure_repo() -> Result<(), String> {
+    let _ = git(&["rev-parse", "--show-toplevel"])?;
+    Ok(())
+}
+
+pub(crate) fn git(args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(args)
+        .output()
+        .map_err(|error| format!("failed to execute git: {error}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().into());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().into())
+}
+
+pub(crate) fn load_checkpoint(name: &str) -> Result<Checkpoint, String> {
+    let path = root()?.join("checkpoints").join(format!("{name}.json"));
+    let content = fs::read_to_string(path).map_err(|_| {
+        format!("checkpoint '{name}' does not exist; run 'crane checkpoint --name {name}'")
+    })?;
+    Ok(Checkpoint {
+        name: json_field(&content, "name").unwrap_or_else(|| name.into()),
+        commit: json_field(&content, "commit").ok_or("checkpoint missing commit")?,
+        branch: json_field(&content, "branch").unwrap_or_default(),
+        created_at_unix: 0,
+    })
+}
+
+pub(crate) fn checkpoint_json(checkpoint: &Checkpoint) -> String {
+    format!(
+        "{{\n  \"name\":\"{}\",\n  \"commit\":\"{}\",\n  \"branch\":\"{}\",\n  \"created_at_unix\":{}\n}}\n",
+        crate::util::escape_json(&checkpoint.name),
+        crate::util::escape_json(&checkpoint.commit),
+        crate::util::escape_json(&checkpoint.branch),
+        checkpoint.created_at_unix
+    )
+}

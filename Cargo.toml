@@ -1,0 +1,17 @@
+[package]
+name = "crane"
+version = "0.1.0"
+edition = "2021"
+description = "Crane: a tiny contract language and verifier for AI-assisted code changes."
+license = "Apache-2.0"
+
+[dependencies]
+tree-sitter = "0.20"
+tree-sitter-java = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-python = "0.20"
+tree-sitter-rust = "0.20"
+
+[[bin]]
+name = "crane"
+path = "src/main.rs"
