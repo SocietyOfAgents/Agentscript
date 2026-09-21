@@ -63,8 +63,11 @@ pub(crate) fn extract_function(source: &str, path: &str, target: &str) -> Option
                     qualified.reverse();
                     qualified.push(wanted.into());
                     if target.split('.').count() == 1 || qualified.join(".") == target {
-                        *output =
-                            Some(String::from_utf8_lossy(&bytes[node.byte_range()]).into_owned());
+                        *output = Some(
+                            String::from_utf8_lossy(&bytes[node.byte_range()])
+                                .replace("\r\n", "\n")
+                                .replace('\r', "\n"),
+                        );
                         return;
                     }
                 }

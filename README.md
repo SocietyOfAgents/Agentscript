@@ -93,6 +93,27 @@ For a compact LLM-facing context:
 crane context
 ```
 
+## GitHub Actions CI
+
+Crane includes a GitHub Actions workflow at
+[`.github/workflows/ci.yml`](./.github/workflows/ci.yml). It runs automatically
+for every branch push and pull request, and can also be started manually from
+the Actions tab.
+
+The workflow installs the stable Rust toolchain and runs:
+
+```text
+cargo fmt --all -- --check
+cargo check --locked
+cargo test --locked
+cargo build --release --locked
+bash scripts/smoke_test.sh
+```
+
+The result appears in GitHub under the repository's **Actions** tab and on
+pull requests under **Checks**. A failed command makes the workflow fail, so
+the check can be required by branch protection rules in repository settings.
+
 ## Language design
 
 Crane MVP is intentionally non-recursive and modular:
